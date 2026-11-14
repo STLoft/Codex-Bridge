@@ -34,7 +34,7 @@ git clone https://github.com/STLoft/Codex-Usage.git public/scripts/extensions/th
 
 ## 대화 연결하기
 
-1. 확장 설정의 **Codex Bridge · 사용량**을 엽니다.
+1. 확장 설정의 **Codex Usage**를 엽니다.
 2. 원하는 모델을 선택하고 **대화 연결에 입력**을 누릅니다.
 3. SillyTavern API 화면에서 다음을 확인하고 **연결**을 누릅니다.
 

@@ -111,7 +111,7 @@ export ST_CODEX_CHAT_BIN="$HOME/bin/codex"
 ## 7. 브라우저에서 연결하기
 
 1. 평소 SillyTavern 주소로 접속하고 새로고침합니다.
-2. 확장 설정 **Codex Bridge · 사용량** 또는 마법봉 **Codex 사용량**을 엽니다.
+2. 확장 설정 **Codex Usage** 또는 마법봉 **Codex Usage**를 엽니다.
 3. **Codex CLI 기본 모델**(`codex-default`)을 선택하거나, CLI에서 작동하는 모델 ID를 직접 입력합니다.
 4. **대화 연결에 입력**을 누릅니다.
 5. API 화면에서 Custom (OpenAI-compatible), URL `http://127.0.0.1:7861/v1`, 비어 있는 API Key를 확인하고 **연결**을 누릅니다.
