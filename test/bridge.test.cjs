@@ -15,6 +15,7 @@ const body = (text = '안녕', stream = false) => ({ model: 'test-model', messag
 async function setup(t, transport = 'app-server', extraEnv = {}) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-rp-test-'));
     const engineEnv = { ...env, ST_CODEX_TEST_TRACE: path.join(root, 'cli-calls.txt'), ...extraEnv, ST_CODEX_CHAT_TRANSPORT: transport };
+    if (transport === null) delete engineEnv.ST_CODEX_CHAT_TRANSPORT;
     const engine = new Engine(root, engineEnv);
     const bridge = await new Bridge({ root, env: engineEnv, engine, port: 0 }).start();
     t.after(async () => { await bridge.close(); await fs.rm(root, { recursive: true, force: true }); });
@@ -31,6 +32,23 @@ test('reject unsupported images/tools and malformed request parameters', () => {
     assert.throws(() => parseChat({ ...body(), messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: 'x' } }] }] }), /텍스트/);
     assert.throws(() => parseChat({ ...body(), tools: [{}] }), /전용/);
     assert.throws(() => parseChat({ ...body(), stop: [123] }), /stop/);
+});
+
+test('desktop and Termux default to app-server; failure never silently switches to exec', async t => {
+    for (const termux of [false, true]) {
+        const b = await setup(t, null, termux ? { TERMUX_VERSION: '0.118.3', PREFIX: '/data/data/com.termux/files/usr' } : {});
+        assert.equal(b.engine.transport, 'app-server');
+        assert.equal((await post(b, body())).status, 200);
+        const calls = await fs.readFile(path.join(b.root, 'cli-calls.txt'), 'utf8');
+        assert.match(calls, /model\/list/); assert.match(calls, /thread\/start/);
+        assert.ok(!calls.split('\n').includes('exec')); assert.ok(!calls.includes('debug models'));
+    }
+    const alias = await setup(t, null, { TERMUX_VERSION: '0.118.3', ST_CODEX_TEST_DEFAULT_MODEL: '1' });
+    assert.equal((await post(alias, { ...body(), model: 'codex-default' })).status, 200);
+    const failed = await setup(t, null, { TERMUX_VERSION: '0.118.3', ST_CODEX_TEST_NO_APP_SERVER: '1' });
+    assert.equal((await post(failed, body())).status, 503);
+    const calls = await fs.readFile(path.join(failed.root, 'cli-calls.txt'), 'utf8');
+    assert.ok(!calls.split('\n').includes('exec')); assert.ok(!calls.includes('debug models'));
 });
 test('RPC metadata, isolated prompt, race-safe completion, split stop and real token accounting', async t => {
     const b = await setup(t);

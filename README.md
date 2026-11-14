@@ -67,7 +67,7 @@ git -C public/scripts/extensions/third-party/Codex-Usage pull --ff-only
 ## 알아둘 점
 
 - 텍스트 대화 전용이며 **Temperature·Top-p는 적용되지 않습니다. 최대 토큰은 길이 안내로만 전달됩니다.**
-- Termux에서도 모델·잔량 조회를 시도합니다. 성공하면 표시하고 실패하면 조회 불가로 안내합니다. [사용 방법](docs/TERMUX.md#잔량모델-조회)을 확인하세요.
+- 데스크탑·Termux 모두 app-server로 연결합니다. 잔량 조회 실패·미제공은 0%와 구분합니다. [사용 방법](docs/TERMUX.md#잔량모델-조회)을 확인하세요.
 - 개발 베타입니다. **Windows·Android 에뮬레이터에서 연결 확인 · 실제 휴대폰 미검증**. macOS/Linux 실기기도 아직 검증하지 않았습니다.
 - OpenAI 또는 SillyTavern의 공식 확장은 아닙니다. 로그인 정보는 설치된 CLI가 관리하고, 응답 생성 시 대화는 CLI를 통해 OpenAI로 전송됩니다.
 

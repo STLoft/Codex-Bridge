@@ -43,6 +43,8 @@ if (args.includes('debug') && args.includes('models')) {
         }
         if (m.method === 'model/list') return reply({ data: [{ model: 'test-model', displayName: 'Test Model', isDefault: true, supportedReasoningEfforts: [{ reasoningEffort: 'medium' }] }], nextCursor: null });
         if (m.method === 'thread/start') {
+            if (process.env.ST_CODEX_TEST_DEFAULT_MODEL) assert.ok(!Object.hasOwn(m.params, 'model'));
+            else assert.equal(m.params.model, 'test-model');
             assert.equal(m.params.sandbox, 'read-only'); assert.equal(m.params.ephemeral, true);
             assert.equal(m.params.config['mcp_servers.inherited.enabled'], false);
             assert.equal(m.params.config['mcp_servers.merged.enabled'], false);

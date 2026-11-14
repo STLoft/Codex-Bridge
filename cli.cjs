@@ -5,10 +5,6 @@ const { spawn } = require('node:child_process');
 const { promisify } = require('node:util');
 const execFile = promisify(require('node:child_process').execFile);
 
-function isTermux(env = process.env, platform = process.platform) {
-    return platform === 'android' || !!env.TERMUX_VERSION || /com\.termux/.test(env.PREFIX || '');
-}
-
 // Like Chatelier, respect PATH order and keep prompts on stdin. Resolve npm's
 // Windows wrapper to its JS entry instead of passing any arguments to cmd.exe.
 async function resolveCli(env = process.env) {
@@ -63,4 +59,4 @@ async function runCli(cli, args, { cwd, input = '', signal, timeout = 180000, en
         if (signal?.aborted) stop();
     });
 }
-module.exports = { isTermux, resolveCli, launch, runCli };
+module.exports = { resolveCli, launch, runCli };

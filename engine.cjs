@@ -1,6 +1,6 @@
 'use strict';
 const { Rpc } = require('./rpc.cjs');
-const { resolveCli, isTermux, runCli } = require('./cli.cjs');
+const { resolveCli, runCli } = require('./cli.cjs');
 const { usageFrom, RP_INSTRUCTIONS } = require('./protocol.cjs');
 
 const DISABLED_FEATURES = ['shell_tool', 'unified_exec', 'apps', 'plugins', 'remote_plugin', 'hooks', 'multi_agent', 'multi_agent_v2', 'image_generation', 'view_image', 'computer_use', 'browser_use', 'in_app_browser', 'code_mode', 'code_mode_host', 'skill_search'];
@@ -18,7 +18,7 @@ function safeArgs() {
 class Engine {
     constructor(cwd, env = process.env) {
         Object.assign(this, { cwd, env, active: new Set(), metadataCalls: new Set(), control: null, starting: null, closed: false, metadataTimeout: 10000 });
-        this.transport = env.ST_CODEX_CHAT_TRANSPORT || (isTermux(env) ? 'exec' : 'app-server');
+        this.transport = env.ST_CODEX_CHAT_TRANSPORT || 'app-server';
         if (!['exec', 'app-server'].includes(this.transport)) throw new Error('ST_CODEX_CHAT_TRANSPORT는 app-server 또는 exec여야 합니다.');
     }
     async createRpc() {
@@ -144,7 +144,7 @@ class Engine {
                 for (const name of Object.keys(layer.config?.mcp_servers || {})) config[`mcp_servers.${name}.enabled`] = false;
             }
             const thread = await rpc.request('thread/start', {
-                model: chat.model, cwd: this.cwd, approvalPolicy: 'never', sandbox: 'read-only',
+                ...(chat.model === 'codex-default' ? {} : { model: chat.model }), cwd: this.cwd, approvalPolicy: 'never', sandbox: 'read-only',
                 ephemeral: true, personality: 'none', baseInstructions: chat.instructions,
                 developerInstructions: 'This is text-only roleplay. No tool operations are permitted.', config,
             });
