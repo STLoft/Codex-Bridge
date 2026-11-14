@@ -2,7 +2,7 @@
   "name": "codex-bridge",
   "version": "0.1.0",
   "private": true,
-  "description": "SillyTavern roleplay chat through the locally signed-in Codex CLI",
+  "description": "SillyTavern chat through the locally signed-in official Codex CLI",
   "main": "index.js",
   "engines": {
     "node": ">=20"
