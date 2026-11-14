@@ -10,8 +10,7 @@
 | --- | --- |
 | Windows PC | [데스크탑 설치](docs/DESKTOP.md) |
 | macOS / Linux | [데스크탑 설치](docs/DESKTOP.md) |
-| 휴대폰으로 PC의 SillyTavern에 접속 | 위 데스크탑 안내를 따라 **PC에** 설치 |
-| Android 터먹스에서 SillyTavern 실행 | [터먹스 설치](docs/TERMUX.md) |
+| Android Termux에서 SillyTavern 실행 | [Termux 설치](docs/TERMUX.md) |
 | 설치는 끝났고 연결만 설정하려는 경우 | [모델 선택·첫 연결](docs/CONNECTION.md) |
 
 ## 설치
@@ -46,7 +45,7 @@ git clone https://github.com/STLoft/Codex-Usage.git public/scripts/extensions/th
 | Model | 팝업에서 선택한 모델 |
 | API Key | 비워 두기 |
 
-휴대폰으로 PC에 접속해도 이 URL은 그대로 사용합니다. 자세한 모델·추론 설정은 [첫 연결 안내](docs/CONNECTION.md)를 참고하세요.
+자세한 모델·추론 설정은 [첫 연결 안내](docs/CONNECTION.md)를 참고하세요.
 
 ## 사용량·모델
 
@@ -68,7 +67,7 @@ git -C public/scripts/extensions/third-party/Codex-Usage pull --ff-only
 ## 알아둘 점
 
 - 텍스트 대화 전용이며 **Temperature·Top-p는 적용되지 않습니다. 최대 토큰은 길이 안내로만 전달됩니다.**
-- 터먹스에서는 공식 잔량 조회·모델 자동 목록을 지원하지 않습니다. `codex-default` 또는 직접 입력한 모델 ID를 사용하세요.
+- 현재 Termux 연결 방식에서는 공식 잔량·모델 자동 조회를 지원하지 않습니다. [이유와 사용 방법](docs/TERMUX.md#잔량모델-조회가-제한되는-이유)을 확인하세요.
 - Windows Codex CLI 0.169.0으로 확인한 개발 베타입니다. macOS/Linux·Android 실기기는 아직 검증하지 않았습니다.
 - OpenAI 또는 SillyTavern의 공식 확장은 아닙니다. 로그인 정보는 설치된 CLI가 관리하고, 응답 생성 시 대화는 CLI를 통해 OpenAI로 전송됩니다.
 

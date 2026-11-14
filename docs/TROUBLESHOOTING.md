@@ -16,7 +16,7 @@
 
 Windows PowerShell에서 `codex.ps1` 실행 정책 오류가 난다면 `codex.cmd --version`과 `codex.cmd login status`로 확인할 수 있습니다. 확장은 npm 래퍼의 JS 진입점을 직접 실행하므로 PowerShell 실행 정책을 바꿀 필요가 없습니다.
 
-PATH로 찾지 못하는 설치는 `ST_CODEX_CHAT_BIN`에 실제 `codex` 실행파일 또는 `codex.js` 절대 경로를 지정할 수 있습니다. [데스크탑](DESKTOP.md) · [터먹스](TERMUX.md)에서 환경이 맞는지 확인하세요.
+PATH로 찾지 못하는 설치는 `ST_CODEX_CHAT_BIN`에 실제 `codex` 실행파일 또는 `codex.js` 절대 경로를 지정할 수 있습니다. [데스크탑](DESKTOP.md) · [Termux](TERMUX.md)에서 환경이 맞는지 확인하세요.
 
 ## 로그인 창이 열리지 않거나 완료되지 않아요
 
@@ -28,7 +28,7 @@ codex login --device-auth
 
 터미널에 나온 주소를 브라우저로 열고 표시된 일회용 코드를 입력합니다. 해당 계정·워크스페이스에서 기기 코드 로그인이 허용되어 있어야 합니다. 자세한 조건은 [공식 인증 안내](https://learn.chatgpt.com/docs/auth?surface=cli#login-on-headless-devices)를 참고하세요.
 
-완료 후 `codex login status`로 확인합니다. 이 확장에는 토큰 입력 칸이 없으며 인증 파일을 복사하는 방식도 안내하지 않습니다. Windows·WSL·컨테이너·터먹스는 서로 다른 로그인 환경일 수 있습니다.
+완료 후 `codex login status`로 확인합니다. 이 확장에는 토큰 입력 칸이 없으며 인증 파일을 복사하는 방식도 안내하지 않습니다. Windows·WSL·컨테이너·Termux는 서로 다른 로그인 환경일 수 있습니다.
 
 ## 로그인했는데 팝업에서는 로그인 필요로 나와요
 
@@ -40,11 +40,11 @@ codex login --device-auth
 
 데스크탑은 CLI 로그인 확인 후 **모델 새로고침**을 누릅니다. CLI 목록은 카탈로그이므로 해당 계정에 모든 모델의 접근 권한이 있다는 뜻은 아닙니다. 다른 모델을 선택해 짧은 대화로 확인하세요.
 
-네이티브 터먹스 exec 모드에서는 자동 모델 열거가 없습니다. `codex-default`를 사용하거나 CLI에서 작동하는 모델 ID를 직접 입력하세요. `codex-default`는 CLI 기본 모델을 사용하라는 브리지용 별칭입니다.
+Termux exec 모드에서는 자동 모델 열거가 없습니다. `codex-default`를 사용하거나 CLI에서 작동하는 모델 ID를 직접 입력하세요. `codex-default`는 CLI 기본 모델을 사용하라는 브리지용 별칭입니다.
 
 ## 5시간 또는 주간 잔량이 미제공으로 나와요
 
-CLI가 그 항목을 제공하지 않았다는 뜻입니다. **잔량이 0이라는 뜻이 아닙니다.** 실제 잔량이 0이면 `0% 남음`으로 표시합니다. 네이티브 터먹스 exec 경로는 공식 잔량 조회를 지원하지 않으므로 미제공·미지원 안내가 정상입니다.
+CLI가 그 항목을 제공하지 않았다는 뜻입니다. **잔량이 0이라는 뜻이 아닙니다.** 실제 잔량이 0이면 `0% 남음`으로 표시합니다. Termux exec 경로는 공식 잔량 조회를 지원하지 않으므로 미제공·미지원 안내가 정상입니다.
 
 토큰 기록은 계정 잔량과 별개입니다. CLI가 대화 이벤트에 토큰을 주면 기록하고, 주지 않은 값은 `—`로 표시합니다.
 
@@ -66,7 +66,7 @@ Windows PowerShell:
 $env:ST_CODEX_CHAT_PORT = '7862'
 ```
 
-macOS/Linux/터먹스:
+macOS/Linux/Termux:
 
 ```sh
 export ST_CODEX_CHAT_PORT=7862
@@ -97,4 +97,4 @@ git -C public/scripts/extensions/third-party/Codex-Usage pull --ff-only
 
 ## 버그를 제보하려면
 
-사용한 OS, SillyTavern 버전, `codex --version`, 브리지·확장 버전, 재현 순서와 오류 메시지를 알려 주세요. 터먹스는 Android·터먹스 버전, 네이티브/proot 여부와 CLI 빌드 정보도 도움이 됩니다. **API 키·토큰·인증 파일·개인 대화 원문은 올리지 마세요.**
+사용한 OS, SillyTavern 버전, `codex --version`, 브리지·확장 버전, 재현 순서와 오류 메시지를 알려 주세요. Termux는 Android·Termux 버전, proot 사용 여부와 CLI 빌드 정보도 도움이 됩니다. **API 키·토큰·인증 파일·개인 대화 원문은 올리지 마세요.**

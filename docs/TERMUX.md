@@ -1,20 +1,20 @@
-# Android 네이티브 터먹스 설치 안내
+# Android Termux 설치 안내
 
-**실제 Android 네이티브 터먹스에서는 아직 검증하지 않았습니다.** Windows의 모의 CLI로 exec 전달 경로·표준입력·응답·토큰 처리를 확인했습니다. 실제 Android 바이너리·로그인·네트워크·샌드박스 작동 확인과는 구분합니다.
+**실제 Android Termux에서는 아직 검증하지 않았습니다.** Windows의 모의 CLI로 exec 전달 경로·표준입력·응답·토큰 처리를 확인했습니다. 실제 Android 바이너리·로그인·네트워크·샌드박스 작동 확인과는 구분합니다.
 
 ## 어떤 사용 방식인가요?
 
 | 사용 방식 | 따라갈 안내 |
 | --- | --- |
 | PC에서 SillyTavern을 켜고 휴대폰 브라우저로 접속 | [데스크탑 설치](DESKTOP.md). 휴대폰에 CLI를 설치하지 않음 |
-| 터먹스 안에서 SillyTavern과 Codex CLI를 모두 실행 | 이 안내 |
+| Termux 안에서 SillyTavern과 Codex CLI를 모두 실행 | 이 안내 |
 | proot·컨테이너 안에서 서버를 실행 | 해당 환경 안에서 CLI·로그인·실행 방식을 별도 확인. 현재 미검증 |
 
-아래는 **터먹스에서 SillyTavern이 이미 작동하고 `codex --version`도 실행되는 환경**을 전제로 합니다. 이 저장소는 Codex CLI 바이너리나 Android 빌드를 제공하지 않습니다. 일반 PC용 npm 패키지가 네이티브 Android에서 작동한다고 가정하지 않습니다. CLI 실행부터 실패한다면 확장 설치 전에 해당 빌드의 Android 지원을 먼저 확인하세요.
+아래는 **Termux에서 SillyTavern이 이미 작동하고 `codex --version`도 실행되는 환경**을 전제로 합니다. 이 저장소는 Codex CLI 바이너리나 Android 빌드를 제공하지 않습니다. 일반 PC용 npm 패키지가 Android에서 작동한다고 가정하지 않습니다. CLI 실행부터 실패한다면 확장 설치 전에 해당 빌드의 Android 지원을 먼저 확인하세요.
 
-## 1. 같은 터먹스에서 준비 상태 확인하기
+## 1. 같은 Termux에서 준비 상태 확인하기
 
-SillyTavern을 실행할 터먹스 세션에서 한 줄씩 실행합니다.
+SillyTavern을 실행할 Termux 세션에서 한 줄씩 실행합니다.
 
 ```sh
 node --version
@@ -33,7 +33,7 @@ CLI는 `exec --json`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `
 codex login status
 ```
 
-이미 ChatGPT 로그인 상태라면 다음 단계로 넘어갑니다. 아직 로그인하지 않았다면 같은 터먹스에서 실행합니다.
+이미 ChatGPT 로그인 상태라면 다음 단계로 넘어갑니다. 아직 로그인하지 않았다면 같은 Termux에서 실행합니다.
 
 ```sh
 codex login
@@ -84,7 +84,7 @@ enableServerPlugins: true
 
 ## 6. exec 경로로 서버 시작하기
 
-일반 네이티브 터먹스는 Android 플랫폼·`TERMUX_VERSION`·`PREFIX`를 보고 **exec 경로를 자동 선택**합니다. 팝업 연결 설명 아래에 `exec`가 표시되는지 확인하세요.
+일반 Termux는 Android 플랫폼·`TERMUX_VERSION`·`PREFIX`를 보고 **exec 경로를 자동 선택**합니다.
 
 자동 감지가 맞지 않는 환경에서 exec 경로를 직접 선택하려면 서버 시작 전에 설정합니다.
 
@@ -119,13 +119,21 @@ export ST_CODEX_CHAT_BIN="$HOME/bin/codex"
 
 추론 설정과 팝업 읽는 방법은 [처음 연결 안내](CONNECTION.md)를 참고하세요.
 
-## 터먹스에서는 무엇이 다른가요?
+## 잔량·모델 조회가 제한되는 이유
 
-| 항목 | 네이티브 터먹스 exec 경로 |
+현재 확장은 Termux에서 대화 생성을 `codex exec`로 처리합니다. 공식 잔량과 모델 목록을 가져오는 조회 기능은 `codex app-server` 연결에만 구현되어 있어, 이 기본 연결에서는 조회를 건너뜁니다.
+
+**현재 확장의 구현 범위에 따른 제한입니다.** 설치된 Termux용 CLI에서 app-server가 실행되고 조회 요청에 정상 응답한다면 잔량·모델 목록을 가져오는 방식도 검토할 수 있습니다. 실제 Termux에서의 동작은 아직 확인하지 않았습니다.
+
+대화는 exec로 유지하고 조회만 별도 app-server로 처리하는 구조가 후보입니다. 이 분리 조회 기능은 현재 배포본에는 구현되어 있지 않습니다. 공식 조회 항목은 [OpenAI App Server 문서](https://learn.chatgpt.com/docs/app-server)의 `account/rateLimits/read`와 `model/list`입니다.
+
+## Termux에서는 무엇이 다른가요?
+
+| 항목 | Termux exec 경로 |
 | --- | --- |
 | 대화 생성 | `codex exec -`, 지시문·대화를 표준입력으로 전달 |
-| 공식 5시간·주간 잔량 | 미지원. 미지원·미제공은 0%를 뜻하지 않음 |
-| 자동 모델 목록 | 미지원. `codex-default` 또는 직접 입력 |
+| 공식 5시간·주간 잔량 | 현재 exec 연결에서는 미지원. 미지원·미제공은 0%를 뜻하지 않음 |
+| 자동 모델 목록 | 현재 exec 연결에서는 미지원. `codex-default` 또는 직접 입력 |
 | 요청별 토큰 | CLI가 제공하면 기록. 미제공 항목은 `—` |
 | 스트리밍 | 완료 메시지 단위로 전달되어 글자별로 부드럽게 나오지 않을 수 있음 |
 | 모델 새로고침 | 기본 모델 별칭을 다시 제공하며 실제 계정 모델 목록은 열거하지 않음 |
@@ -141,4 +149,4 @@ git -C public/scripts/extensions/third-party/Codex-Usage pull --ff-only
 
 서버를 다시 켜고 브라우저도 새로고침합니다. `data/`의 기록·설정은 Git 업데이트 대상이 아닙니다. 오류가 나면 [문제 해결](TROUBLESHOOTING.md)을 확인하세요.
 
-제보할 때 Android·터먹스·CLI 버전과 네이티브/proot 여부를 알려 주세요. 개인 대화와 인증 정보는 올리지 마세요.
+제보할 때 Android·Termux·CLI 버전과 proot 사용 여부를 알려 주세요. 개인 대화와 인증 정보는 올리지 마세요.
