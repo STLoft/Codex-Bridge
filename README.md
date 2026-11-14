@@ -1,52 +1,67 @@
 # Codex Bridge for SillyTavern
 
-공식 **Codex CLI**를 사용하는 비공식 SillyTavern 서버 플러그인입니다. 사용자의 컴퓨터에 설치된 CLI와 기존 ChatGPT 로그인을 이용해, Chat Completion의 Custom (OpenAI-compatible) 연결로 텍스트 롤플레잉 대화를 생성합니다.
+SillyTavern에서 **공식 Codex CLI의 기존 ChatGPT 로그인**으로 텍스트 롤플레잉을 연결합니다. 사용자의 기기에서 실행하는 비공식 확장이며 별도 API 키를 발급받을 필요가 없습니다. OpenAI 또는 SillyTavern의 공식 확장은 아닙니다.
 
-**v0.1.0 개발 베타** · [사용량·모델 선택 확장 Codex Usage](https://github.com/STLoft/Codex-Usage)와 함께 사용하세요. OpenAI 또는 SillyTavern의 공식 확장이 아닙니다.
+**v0.1.0 개발 베타** · MIT · 실제 검증 CLI: Windows 0.169.0
 
-## 기능
+## 처음이라면 여기서 시작하세요
 
-- Windows/macOS/Linux: `codex app-server`의 표준입출력 JSONL RPC
-- Android 네이티브 터먹스: `codex exec -`, 지시문·대화를 표준입력으로 전달
-- 일반 응답·SSE, 전체 대화·캐릭터 지시문·메시지 이름·이어쓰기 전달
-- 매 요청 독립 임시 세션, 실패·취소·stop 문자열 처리
-- 셸·앱·MCP·에이전트·웹 검색 등 도구 비활성화와 읽기 전용 샌드박스
-- CLI 공식 잔량과 브리지를 거친 요청별 토큰 기록
-- 모델은 **서버 시작 때 한 번**, 이후에는 **사용자가 모델 새로고침을 눌렀을 때만** 조회
+| 내 사용 환경 | 따라갈 안내 |
+| --- | --- |
+| Windows PC에서 SillyTavern 실행 | [데스크탑 설치 안내](docs/DESKTOP.md) |
+| macOS/Linux에서 SillyTavern 실행 | [데스크탑 설치 안내](docs/DESKTOP.md). 해당 OS 실기기는 미검증 |
+| PC에서 서버를 켜고 휴대폰 브라우저로 접속 | [데스크탑 설치 안내](docs/DESKTOP.md). 설치·로그인은 PC에서 진행 |
+| Android 터먹스에서 서버와 CLI를 모두 실행 | [터먹스 설치 안내](docs/TERMUX.md). 실기기 미검증, 작동하는 Android CLI 필요 |
+| 설치는 끝났고 모델·API 연결을 설정하려 함 | [처음 대화 연결하기](docs/CONNECTION.md) |
+| 팝업이 없거나 로그인·연결에서 막힘 | [문제 해결](docs/TROUBLESHOOTING.md) |
 
-인증 토큰 파일을 직접 읽거나 복사하지 않으며 별도 API 키를 발급받을 필요가 없습니다. 로그인과 인증 갱신은 설치된 CLI가 담당합니다. 각 사용자가 자신의 컴퓨터에서 직접 실행하는 구조입니다.
+## 무엇을 설치하나요?
 
-## 준비
+**서버 플러그인과 브라우저 확장, 두 가지가 모두 필요합니다.**
 
-Node.js 20 이상, Git, 작동하는 SillyTavern과 [공식 Codex CLI](https://learn.chatgpt.com/docs/cli)가 필요합니다. 서버를 실행하는 사용자 계정의 터미널에서 확인하세요.
+| 구성요소 | 역할 | 설치 위치 |
+| --- | --- | --- |
+| 이 저장소: Codex Bridge | SillyTavern 서버에서 CLI를 실행해 대화 연결 | `plugins/Codex-Bridge` |
+| [Codex Usage](https://github.com/STLoft/Codex-Usage) | 사용량 팝업·모델 선택·연결 자동 입력 | `public/scripts/extensions/third-party/Codex-Usage` |
 
-```sh
-node --version
-codex --version
-codex login status
-```
-
-로그인하지 않았다면 `codex login`에서 ChatGPT 로그인을 완료하세요. 실제 검증한 CLI는 **0.169.0**입니다. 다른 버전은 프로토콜·플래그 호환성 확인이 필요합니다.
+브라우저 확장 설치 창은 **Codex Usage만** 설치합니다. 서버 플러그인은 서버가 실행되는 기기에 따로 설치해야 합니다. 기존 Codex 로그인은 그대로 사용하며 인증 파일을 직접 읽거나 복사하지 않습니다.
 
 ## 설치
 
-1. SillyTavern 서버를 종료합니다.
-2. SillyTavern 루트 폴더에서 다음을 실행합니다.
+아래는 설치 순서를 이미 아는 분을 위한 요약입니다. 처음 설치한다면 [데스크탑](docs/DESKTOP.md) 또는 [터먹스](docs/TERMUX.md)의 단계별 안내를 따라 주세요.
+
+1. Node.js 20 이상·Git·작동하는 Codex CLI를 준비합니다. 서버를 실행할 터미널에서 `codex --version`, `codex login status`를 확인하세요. 로그인 전이면 `codex login`에서 ChatGPT 로그인을 완료합니다.
+2. SillyTavern 서버를 종료하고 `server.js`·`config.yaml`이 있는 SillyTavern 루트 폴더로 이동합니다.
+3. 다음 두 명령으로 설치합니다. 브라우저 확장을 이미 설치했다면 두 번째 명령은 생략합니다.
 
 ```sh
 git clone https://github.com/STLoft/Codex-Bridge.git plugins/Codex-Bridge
 git clone https://github.com/STLoft/Codex-Usage.git public/scripts/extensions/third-party/Codex-Usage
 ```
 
-3. SillyTavern의 `config.yaml`에서 `enableServerPlugins: true`로 설정합니다. 먼저 설정 파일을 백업하세요.
-4. SillyTavern을 재시작하고 브라우저를 새로고침합니다. 추가 `npm install`은 필요 없습니다.
-5. 확장 설정의 **Codex Bridge · 사용량** → 모델 선택 → **대화 연결에 입력** → API 화면에서 **연결**을 누릅니다.
+4. `config.yaml`을 백업하고 `enableServerPlugins: true`를 설정합니다. 같은 항목을 중복 추가하지 않습니다.
+5. 평소 방법으로 SillyTavern 서버를 다시 켜고 브라우저를 새로고침합니다. 별도 브리지 서버나 추가 `npm install`은 필요 없습니다.
+6. 확장 설정의 **Codex Bridge · 사용량** → 모델 선택 → **대화 연결에 입력** → SillyTavern API 화면에서 **연결**을 누릅니다.
 
-사용량 확장은 SillyTavern의 확장 설치 창에 `https://github.com/STLoft/Codex-Usage`를 입력해서 설치해도 됩니다. **서버 플러그인은 확장 설치 창만으로 설치되지 않습니다.**
+| API 설정 | 값 |
+| --- | --- |
+| API 종류 | Chat Completion |
+| Source | Custom (OpenAI-compatible) |
+| URL | `http://127.0.0.1:7861/v1` |
+| Model | 사용량 팝업에서 선택한 모델 ID |
+| API Key | 비워 두기 |
 
-수동 연결: **Chat Completion → Custom (OpenAI-compatible)**, URL `http://127.0.0.1:7861/v1`, 모델 ID는 사용량 팝업에서 확인합니다. API Key는 비우고 기존 Custom 연결의 추가 인증 헤더도 확인하세요. 휴대폰에서 PC의 SillyTavern에 접속할 때도 이 주소는 그대로 둡니다. 요청은 SillyTavern 서버가 로컬 브리지에 전송합니다.
+자동 입력만으로 API 연결 버튼까지 눌러지지는 않습니다. [처음 연결 안내](docs/CONNECTION.md)에서 모델·추론 설정·짧은 테스트 대화까지 확인하세요. 휴대폰으로 PC에 접속해도 브리지 URL의 `127.0.0.1`은 그대로 둡니다. SillyTavern 서버가 사용하는 주소입니다.
 
-개발용 ZIP 등으로 `plugins/ST-Codex-Bridge` 또는 `third-party/ST-Codex-Usage`를 설치했던 경우에는 서버를 종료하고 기존 플러그인의 `data/`를 백업한 뒤 해당 구형 폴더를 옮겨 두세요. 구형과 새 폴더를 함께 로드하면 포트·확장 중복이 발생할 수 있습니다. 기록을 이어 쓰려면 백업한 `data/`를 `plugins/Codex-Bridge/data/`에 복사합니다.
+기존 ZIP의 `ST-Codex-Bridge`·`ST-Codex-Usage`를 설치했다면 새 폴더와 중복 로드하지 마세요. 서버 종료 후 기록을 백업하고 구형 폴더를 plugins/extensions 밖으로 옮기는 절차는 [이전 설치에서 옮기기](docs/TROUBLESHOOTING.md#이미-설치되어-있다고-나와요)에 있습니다.
+
+## 주요 기능
+
+- Windows/macOS/Linux: `codex app-server` JSONL RPC. 네이티브 터먹스: `codex exec -` 표준입력 경로.
+- 일반 응답·SSE, 캐릭터 지시문·이름·전체 대화·이어쓰기 전달, 요청별 독립 임시 세션.
+- 실패·취소·stop 문자열 처리, 셸·앱·MCP·웹 검색 등 도구 비활성화와 읽기 전용 샌드박스.
+- 공식 5시간·주간 잔량과 리셋 시각, 브리지를 거친 요청별 토큰 기록.
+- 팝업 안 모델 목록, 수동 갱신, 선택 유지, 모델·추론 설정과 대화 연결 자동 입력.
 
 ## 사용량·모델
 
