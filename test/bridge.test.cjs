@@ -9,12 +9,14 @@ const { Bridge } = require('../server.cjs');
 const { Engine } = require('../engine.cjs');
 const { Store } = require('../store.cjs');
 const { parseChat } = require('../protocol.cjs');
+const { runCli, resolveCli } = require('../cli.cjs');
 const env = { ...process.env, ST_CODEX_CHAT_BIN: path.join(__dirname, 'fake-cli.cjs') };
 const body = (text = '안녕', stream = false) => ({ model: 'test-model', messages: [{ role: 'system', content: '한국어로 고성의 문지기를 연기한다.' }, { role: 'user', name: '손님', content: text }], stream, stop: ['\nSTOP'] });
-async function setup(t, transport = 'app-server') {
+async function setup(t, transport = 'app-server', extraEnv = {}) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-rp-test-'));
-    const engine = new Engine(root, { ...env, ST_CODEX_CHAT_TRANSPORT: transport });
-    const bridge = await new Bridge({ root, env, engine, port: 0 }).start();
+    const engineEnv = { ...env, ST_CODEX_TEST_TRACE: path.join(root, 'cli-calls.txt'), ...extraEnv, ST_CODEX_CHAT_TRANSPORT: transport };
+    const engine = new Engine(root, engineEnv);
+    const bridge = await new Bridge({ root, env: engineEnv, engine, port: 0 }).start();
     t.after(async () => { await bridge.close(); await fs.rm(root, { recursive: true, force: true }); });
     return bridge;
 }
@@ -96,9 +98,48 @@ test('loopback endpoint blocks browser origins, DNS rebinding and non-JSON bodie
     }); assert.equal(status, 403);
     assert.equal((await post(b, { ...body(), messages: [] })).status, 400);
 });
-test('Termux exec stdin adapter returns output and exposes unavailable quota honestly', async t => {
-    const b = await setup(t, 'exec'); const status = await b.status(); assert.equal(status.limits, null); assert.match(status.quotaError, /지원하지/);
+test('exec chat stays on stdin while CLI catalog and separate official quota queries succeed', async t => {
+    const b = await setup(t, 'exec'); const status = await b.status(); assert.equal(status.limits.rateLimits.primary.usedPercent, 25); assert.equal(status.quotaError, '');
+    const models = await b.models(); assert.deepEqual(models.map(m => m.id), ['test-model']); assert.deepEqual(models[0].efforts, ['low', 'medium']);
     const res = await post(b, body()); const data = await res.json(); assert.equal(data.choices[0].message.content, '문을 열었다.'); assert.equal(data.usage.total_tokens, 120);
+    await b.models(); await b.status(true);
+    const calls = (await fs.readFile(path.join(b.root, 'cli-calls.txt'), 'utf8')).trim().split('\n');
+    assert.equal(calls.filter(c => c === 'debug models').length, 1); assert.ok(calls.includes('exec')); assert.ok(!calls.includes('thread/start'));
+});
+
+test('unsupported app-server leaves exec chat and independently queried models available', async t => {
+    const b = await setup(t, 'exec', { ST_CODEX_TEST_NO_APP_SERVER: '1' });
+    const status = await b.status(); assert.equal(status.available, true); assert.equal(status.loggedIn, true); assert.equal(status.limits, null); assert.match(status.quotaError, /조회 실패/);
+    assert.equal((await b.models())[0].id, 'test-model');
+    assert.equal((await post(b, body())).status, 200);
+});
+
+test('unavailable or malformed CLI catalog falls back to app-server models', async t => {
+    for (const flag of ['ST_CODEX_TEST_NO_CATALOG', 'ST_CODEX_TEST_BAD_CATALOG']) {
+        const b = await setup(t, 'exec', { [flag]: '1' });
+        assert.equal((await b.models())[0].id, 'test-model'); assert.equal(b.modelsError, '');
+        const calls = await fs.readFile(path.join(b.root, 'cli-calls.txt'), 'utf8'); assert.match(calls, /debug models/); assert.match(calls, /model\/list/);
+    }
+});
+
+test('both unavailable model paths retain default fallback and report failure without blocking exec', async t => {
+    const b = await setup(t, 'exec', { ST_CODEX_TEST_NO_CATALOG: '1', ST_CODEX_TEST_NO_APP_SERVER: '1' });
+    assert.equal((await b.models())[0].id, 'codex-default'); assert.equal(b.modelsUpdatedAt, null); assert.match(b.modelsError, /모델 목록 조회 실패/);
+    await b.refreshModels(); assert.equal((await b.models())[0].id, 'codex-default'); assert.equal((await post(b, body())).status, 200);
+});
+
+test('quota API failure or timeout is isolated from CLI login, models and exec chat', async t => {
+    for (const flag of ['ST_CODEX_TEST_NO_QUOTA', 'ST_CODEX_TEST_HANG_QUOTA']) {
+        const b = await setup(t, 'exec', { [flag]: '1' });
+        await b.engine.getControl(); b.engine.metadataTimeout = 100;
+        const status = await b.status(); assert.equal(status.loggedIn, true); assert.equal(status.available, true); assert.equal(status.limits, null); assert.match(status.quotaError, /조회 실패/);
+        assert.equal((await post(b, body())).status, 200);
+    }
+});
+
+test('oversized JSON command output fails explicitly instead of being silently truncated', async t => {
+    const b = await setup(t, 'exec'); const cli = await resolveCli(b.env);
+    await assert.rejects(runCli(cli, ['debug', 'models'], { cwd: b.root, env: b.env, stdoutLimit: 100, failOnStdoutLimit: true }), /크기 제한/);
 });
 test('serialized persistence survives concurrent records and restarts without storing chat', async t => {
     const b = await setup(t);

@@ -20,6 +20,7 @@ class Bridge {
         if (!Number.isInteger(this.port) || this.port < 0 || this.port > 65535) throw new Error('ST_CODEX_CHAT_PORT 값이 올바르지 않습니다.');
         const workspace = path.join(this.root, 'workspace'); await fs.mkdir(workspace, { recursive: true });
         this.store ||= await new Store(path.join(this.root, 'data')).init(); this.engine ||= new Engine(workspace, this.env);
+        if (this.engine.transport === 'exec') this.modelCache = [{ id: 'codex-default', name: 'Codex CLI 기본 모델', isDefault: true, efforts: [] }];
         this.server = http.createServer((req, res) => { this.handle(req, res).catch(e => problem(res, e)); });
         this.server.requestTimeout = 30000; this.server.headersTimeout = 15000;
         await new Promise((resolve, reject) => { this.server.once('error', reject); this.server.listen(this.port, '127.0.0.1', resolve); });

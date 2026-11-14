@@ -1,6 +1,6 @@
 # 데스크탑 설치: Windows · macOS · Linux
 
-PC에서 SillyTavern 서버를 실행하고 있다면 이 안내를 따라 주세요. 휴대폰 브라우저로 PC의 SillyTavern에 접속할 때도 설치는 **PC에서** 진행합니다. 휴대폰에 Codex CLI를 따로 설치할 필요는 없습니다.
+PC에서 SillyTavern 서버를 실행하는 경우의 설치 안내입니다.
 
 Windows의 실제 Codex CLI 0.169.0 연결을 검증했습니다. macOS/Linux 실기기에서는 아직 검증하지 않았습니다.
 

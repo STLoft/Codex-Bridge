@@ -17,7 +17,7 @@ function safeArgs() {
 
 class Engine {
     constructor(cwd, env = process.env) {
-        Object.assign(this, { cwd, env, active: new Set(), control: null, starting: null, closed: false });
+        Object.assign(this, { cwd, env, active: new Set(), metadataCalls: new Set(), control: null, starting: null, closed: false, metadataTimeout: 10000 });
         this.transport = env.ST_CODEX_CHAT_TRANSPORT || (isTermux(env) ? 'exec' : 'app-server');
         if (!['exec', 'app-server'].includes(this.transport)) throw new Error('ST_CODEX_CHAT_TRANSPORT는 app-server 또는 exec여야 합니다.');
     }
@@ -30,7 +30,7 @@ class Engine {
         rpc.cli = { command: original.command, prefix: [...original.prefix, ...safeArgs()] };
         this.active.add(rpc);
         rpc.once('closed', () => { this.active.delete(rpc); if (this.control === rpc) this.control = null; });
-        try { return await rpc.start(); } catch (e) { await rpc.close(); this.active.delete(rpc); throw e; }
+        try { return await rpc.start(this.transport === 'exec' ? this.metadataTimeout : 30000); } catch (e) { await rpc.close(); this.active.delete(rpc); throw e; }
     }
     async getControl() {
         if (this.control && !this.control.closed) return this.control;
@@ -43,8 +43,18 @@ class Engine {
         if (version.code !== 0) throw new Error('Codex CLI 실행에 실패했습니다.');
         if (this.transport === 'exec') {
             const login = await runCli(cli, ['login', 'status'], { cwd: this.cwd, env: this.env, timeout: 15000 });
-            return { available: true, version: version.stdout.trim(), transport: this.transport, loggedIn: login.code === 0 && /ChatGPT/i.test(login.stdout + login.stderr),
-                planType: null, limits: null, quotaError: 'exec 모드에서는 공식 잔량 조회를 지원하지 않습니다. 토큰 기록은 대화 후 표시됩니다.' };
+            const status = { available: true, version: version.stdout.trim(), transport: this.transport,
+                loggedIn: login.code === 0 && /ChatGPT/i.test(login.stdout + login.stderr), planType: null, limits: null, quotaError: '' };
+            if (!status.loggedIn) return { ...status, quotaError: '서버 터미널에서 codex login으로 ChatGPT 로그인을 완료하세요.' };
+            // Query metadata independently. Failure must not disable exec chat.
+            try {
+                const rpc = await this.getControl();
+                const account = await rpc.request('account/read', { refreshToken: false }, this.metadataTimeout);
+                if (account.account?.type !== 'chatgpt') throw new Error('잔량 조회 연결의 ChatGPT 로그인을 확인하세요.');
+                status.planType = account.account.planType || null;
+                status.limits = await rpc.request('account/rateLimits/read', {}, this.metadataTimeout);
+            } catch (e) { status.quotaError = `계정 잔량 조회 실패: ${e.message}`; }
+            return status;
         }
         const rpc = await this.getControl();
         const account = await rpc.request('account/read', { refreshToken: false });
@@ -56,11 +66,51 @@ class Engine {
             planType: account.account?.planType || account.account?.type || null, limits, quotaError };
     }
     async models() {
-        if (this.transport === 'exec') return [{ id: 'codex-default', name: 'Codex CLI 기본 모델', isDefault: true, efforts: [] }];
+        if (this.transport === 'exec') {
+            try { return await this.modelsFromCli(); }
+            catch (catalogError) {
+                try {
+                    const models = await this.modelsFromRpc();
+                    if (!models.length) throw new Error('빈 모델 목록');
+                    return models;
+                } catch (rpcError) { throw new Error(`모델 목록 조회 실패: ${catalogError.message} / ${rpcError.message}`); }
+            }
+        }
+        return this.modelsFromRpc();
+    }
+    async modelsFromCli() {
+        if (this.closed) throw new Error('브리지가 종료되었습니다.');
+        const controller = new AbortController(); this.metadataCalls.add(controller);
+        try {
+            const cli = await resolveCli(this.env);
+            const result = await runCli(cli, ['debug', 'models'], { cwd: this.cwd, env: this.env, timeout: 30000,
+                signal: controller.signal, stdoutLimit: 8 * 1024 * 1024, failOnStdoutLimit: true });
+            if (result.code !== 0) throw new Error('codex debug models 실행 실패');
+            let catalog;
+            try { catalog = JSON.parse(result.stdout); } catch { throw new Error('모델 목록 JSON을 읽지 못했습니다.'); }
+            const values = Array.isArray(catalog) ? catalog : catalog?.models;
+            if (!Array.isArray(values)) throw new Error('모델 목록 형식이 올바르지 않습니다.');
+            const allowedEfforts = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']);
+            const models = new Map();
+            for (const m of values) {
+                if (!m || m.hidden || (m.visibility != null && m.visibility !== 'list')) continue;
+                const id = m.slug || m.model || m.id;
+                if (typeof id !== 'string' || !id.trim() || id.length > 200 || id.trim().startsWith('-')) continue;
+                const efforts = [...new Set((m.supported_reasoning_levels || m.supportedReasoningEfforts || [])
+                    .map(v => v.effort || v.reasoningEffort).filter(v => allowedEfforts.has(v)))];
+                const defaultEffort = m.default_reasoning_level || m.defaultReasoningEffort;
+                models.set(id, { id, name: m.display_name || m.displayName || id, isDefault: !!(m.is_default || m.isDefault), efforts,
+                    defaultEffort: allowedEfforts.has(defaultEffort) ? defaultEffort : efforts[0] });
+            }
+            if (!models.size) throw new Error('표시할 모델 목록이 비어 있습니다.');
+            return [...models.values()];
+        } finally { this.metadataCalls.delete(controller); }
+    }
+    async modelsFromRpc() {
         const rpc = await this.getControl();
         const result = new Map(), seen = new Set(); let cursor;
         do {
-            const page = await rpc.request('model/list', { limit: 100, ...(cursor ? { cursor } : {}) });
+            const page = await rpc.request('model/list', { limit: 100, ...(cursor ? { cursor } : {}) }, this.transport === 'exec' ? this.metadataTimeout : 30000);
             if (!Array.isArray(page?.data)) throw new Error('모델 목록 응답을 읽지 못했습니다.');
             for (const m of page.data) if (!m.hidden && typeof m.model === 'string') {
                 result.set(m.model, { id: m.model, name: m.displayName || m.model, isDefault: !!m.isDefault,
@@ -152,9 +202,9 @@ class Engine {
             if (msg.type === 'turn.completed') { completed = true; usage = usageFrom(msg.usage); }
             if (msg.type === 'turn.failed' || msg.type === 'error') failure = msg.error?.message || msg.message || 'Codex 대화 실패';
         } });
-        if (result.code !== 0 || !completed || failure) throw new Error(failure || 'Codex CLI 대화에 실패했습니다. CLI 버전·로그인과 터먹스 빌드 지원을 확인하세요.');
+        if (result.code !== 0 || !completed || failure) throw new Error(failure || 'Codex CLI 대화에 실패했습니다. CLI 버전·로그인과 Termux 빌드 지원을 확인하세요.');
         return { usage };
     }
-    async close() { this.closed = true; await Promise.all([...this.active].map(rpc => rpc.close())); this.active.clear(); this.control = null; }
+    async close() { this.closed = true; for (const controller of this.metadataCalls) controller.abort(); await Promise.all([...this.active].map(rpc => rpc.close())); this.active.clear(); this.control = null; }
 }
 module.exports = { Engine, SAFE_CONFIG, safeArgs };

@@ -1,18 +1,19 @@
 # Android Termux 설치 안내
 
-**Windows에서 연결 동작 확인 · Termux 실기기 미검증**
-
-## 어떤 사용 방식인가요?
-
-| 사용 방식 | 따라갈 안내 |
-| --- | --- |
-| PC에서 SillyTavern을 켜고 휴대폰 브라우저로 접속 | [데스크탑 설치](DESKTOP.md). 휴대폰에 CLI를 설치하지 않음 |
-| Termux 안에서 SillyTavern과 Codex CLI를 모두 실행 | 이 안내 |
-| proot·컨테이너 안에서 서버를 실행 | 해당 환경 안에서 CLI·로그인·실행 방식을 별도 확인. 현재 미검증 |
+**Windows·Android 에뮬레이터에서 연결 확인 · 실제 휴대폰 미검증**
 
 아래는 **Termux에서 SillyTavern이 이미 작동하고 `codex --version`도 실행되는 환경**을 전제로 합니다. 이 저장소는 Codex CLI 바이너리나 Android 빌드를 제공하지 않습니다. 일반 PC용 npm 패키지가 Android에서 작동한다고 가정하지 않습니다. CLI 실행부터 실패한다면 확장 설치 전에 해당 빌드의 Android 지원을 먼저 확인하세요.
 
 ## 1. 같은 Termux에서 준비 상태 확인하기
+
+CLI가 없다면 Termux 패키지 저장소에서 설치할 수 있습니다. 이미 필요한 패키지가 정상 작동한다면 다시 설치할 필요는 없습니다.
+
+```sh
+pkg update
+pkg install nodejs-lts git codex
+```
+
+패키지를 찾지 못하면 Termux와 패키지 저장소를 먼저 확인하세요.
 
 SillyTavern을 실행할 Termux 세션에서 한 줄씩 실행합니다.
 
@@ -25,7 +26,7 @@ codex exec --help
 
 Node.js는 20 이상이 필요합니다. CLI가 없거나 바이너리 실행 오류가 나면 CLI 설치를 먼저 해결하세요. CLI 실행파일을 브리지 폴더에 복사해 넣을 필요는 없습니다.
 
-CLI는 `exec --json`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `--skip-git-repo-check`, `--sandbox read-only`, `--cd`, 표준입력 프롬프트 `-`를 지원해야 합니다. PC 검증 버전은 0.169.0이며 Android 빌드의 호환성은 별도로 확인해야 합니다. 지원하지 않는 옵션이 있으면 오류를 표시하며 도구·샌드박스 제한을 풀어서 재시도하지 않습니다.
+CLI는 `exec --json`, `--ephemeral`, `--ignore-user-config`, `--ignore-rules`, `--skip-git-repo-check`, `--sandbox read-only`, `--cd`, 표준입력 프롬프트 `-`를 지원해야 합니다. Windows와 Android 에뮬레이터에서 확인한 CLI 버전은 0.169.0입니다. 다른 버전·기기에서는 호환성을 별도로 확인해야 합니다. 지원하지 않는 옵션이 있으면 오류를 표시하며 도구·샌드박스 제한을 풀어서 재시도하지 않습니다.
 
 ## 2. ChatGPT 로그인하기
 
@@ -92,6 +93,13 @@ enableServerPlugins: true
 export ST_CODEX_CHAT_TRANSPORT=exec
 ```
 
+실시간 텍스트 스트리밍을 원하고 설치된 CLI의 app-server가 정상 작동한다면, 대신 아래 설정을 사용할 수 있습니다. 대화·모델·잔량을 모두 app-server로 처리합니다. Android 에뮬레이터에서 일반 응답·SSE·취소·모델·잔량 조회를 확인했으며 실제 휴대폰은 아직 검증하지 않았습니다.
+
+```sh
+export ST_CODEX_CHAT_TRANSPORT=app-server
+```
+
+자동 선택으로 돌아가려면 `unset ST_CODEX_CHAT_TRANSPORT`를 실행한 뒤 서버를 다시 시작합니다.
 **이 변수를 설정한 같은 터미널에서** 평소 방식으로 SillyTavern을 시작합니다. `start.sh`를 사용하고 있었다면:
 
 ```sh
@@ -112,7 +120,7 @@ export ST_CODEX_CHAT_BIN="$HOME/bin/codex"
 
 1. 평소 SillyTavern 주소로 접속하고 새로고침합니다.
 2. 확장 설정 **Codex Usage** 또는 마법봉 **Codex Usage**를 엽니다.
-3. **Codex CLI 기본 모델**(`codex-default`)을 선택하거나, CLI에서 작동하는 모델 ID를 직접 입력합니다.
+3. 조회된 목록에서 모델을 선택합니다. 목록 조회에 실패했다면 **Codex CLI 기본 모델**(`codex-default`)을 선택하거나 모델 ID를 직접 입력합니다.
 4. **대화 연결에 입력**을 누릅니다.
 5. API 화면에서 Custom (OpenAI-compatible), URL `http://127.0.0.1:7861/v1`, 비어 있는 API Key를 확인하고 **연결**을 누릅니다.
 6. 짧은 대화를 보내 보고 **요청별 토큰 기록**을 확인합니다.
@@ -121,21 +129,21 @@ export ST_CODEX_CHAT_BIN="$HOME/bin/codex"
 
 ## 잔량·모델 조회
 
-- **모델 목록:** Windows에서 `codex debug models`로 조회를 확인했습니다. 이 조회 방식은 현재 확장의 Termux 연결에 아직 적용하지 않았습니다.
-- **계정 잔량:** Windows의 `exec` 실행에서는 얻지 못했습니다. 현재 확장의 Termux 연결에서는 지원하지 않습니다.
+- **모델 목록:** CLI의 `codex debug models`로 먼저 조회합니다. 실패하면 app-server 조회도 시도합니다. 두 방법 모두 실패하면 마지막 목록 또는 기본 모델을 유지하고 오류를 안내합니다.
+- **계정 잔량:** 대화 생성과 별도로 app-server 조회를 시도합니다. 성공하면 수치·리셋 시각을 표시하고, 실패하면 조회 불가로 안내합니다. 조회 실패로 대화 생성을 막지는 않습니다.
 
-현재는 기본 모델(`codex-default`)을 선택하거나 모델 ID를 직접 입력해 사용하세요. Termux 실기기는 아직 검증하지 않았습니다.
+모델은 서버 시작 시 한 번 조회하고 이후에는 **모델 새로고침**을 눌렀을 때만 다시 조회합니다. 기존 선택 모델은 바꾸지 않습니다. Android 17 x86_64 에뮬레이터의 Termux에서 모델 8개·5시간/주간 잔량·일반/SSE 응답·토큰 기록을 확인했습니다. 실제 휴대폰에서는 아직 검증하지 않았습니다.
 
 ## Termux에서는 무엇이 다른가요?
 
 | 항목 | Termux exec 경로 |
 | --- | --- |
 | 대화 생성 | `codex exec -`, 지시문·대화를 표준입력으로 전달 |
-| 공식 5시간·주간 잔량 | 현재 exec 연결에서는 미지원. 미지원·미제공은 0%를 뜻하지 않음 |
-| 자동 모델 목록 | 현재 exec 연결에서는 미지원. `codex-default` 또는 직접 입력 |
+| 공식 5시간·주간 잔량 | 별도 조회를 시도해 성공한 값을 표시. 실패·미제공은 0%를 뜻하지 않음 |
+| 모델 목록 | CLI 조회 후 필요 시 app-server로 재시도. 실패하면 마지막 목록 또는 기본 모델 유지 |
 | 요청별 토큰 | CLI가 제공하면 기록. 미제공 항목은 `—` |
 | 스트리밍 | 완료 메시지 단위로 전달되어 글자별로 부드럽게 나오지 않을 수 있음 |
-| 모델 새로고침 | 기본 모델 별칭을 다시 제공하며 실제 계정 모델 목록은 열거하지 않음 |
+| 모델 새로고침 | 모델 목록을 다시 조회하며 선택 모델은 유지 |
 
 ## 업데이트하기
 

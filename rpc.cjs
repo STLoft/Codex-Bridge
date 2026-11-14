@@ -7,7 +7,7 @@ class Rpc extends EventEmitter {
     constructor(cli, cwd, env = process.env) {
         super(); Object.assign(this, { cli, cwd, env, next: 1, pending: new Map(), closed: false });
     }
-    async start() {
+    async start(timeout = 30000) {
         this.child = launch(this.cli, ['app-server'], { cwd: this.cwd, env: this.env });
         this.stderr = '';
         this.child.stderr.setEncoding('utf8');
@@ -31,7 +31,7 @@ class Rpc extends EventEmitter {
             }
         });
         try {
-            await this.request('initialize', { clientInfo: { name: 'st_codex_roleplay', title: 'SillyTavern Codex Bridge', version: '0.1.0' } });
+            await this.request('initialize', { clientInfo: { name: 'st_codex_roleplay', title: 'SillyTavern Codex Bridge', version: require('./package.json').version } }, timeout);
             this.write({ method: 'initialized', params: {} });
         } catch (e) { await this.close(); throw e; }
         return this;

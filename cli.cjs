@@ -34,7 +34,7 @@ function launch(cli, args, options = {}) {
     return spawn(cli.command, [...cli.prefix, ...args], { ...options, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
 }
 
-async function runCli(cli, args, { cwd, input = '', signal, timeout = 180000, env = process.env, onLine = () => {} } = {}) {
+async function runCli(cli, args, { cwd, input = '', signal, timeout = 180000, env = process.env, onLine = () => {}, stdoutLimit = 65536, failOnStdoutLimit = false } = {}) {
     if (signal?.aborted) throw new Error('요청이 취소되었습니다.');
     return new Promise((resolve, reject) => {
         const child = launch(cli, args, { cwd, env });
@@ -45,7 +45,12 @@ async function runCli(cli, args, { cwd, input = '', signal, timeout = 180000, en
         const clean = () => { clearTimeout(timer); signal?.removeEventListener('abort', stop); };
         child.stdout.setEncoding('utf8');
         child.stdout.on('data', chunk => {
-            stdout = (stdout + chunk).slice(-65536); buffer += chunk;
+            stdout += chunk;
+            if (stdout.length > stdoutLimit) {
+                if (failOnStdoutLimit) { failure = new Error('CLI 응답 크기 제한을 초과했습니다.'); child.kill(); }
+                stdout = stdout.slice(-stdoutLimit);
+            }
+            buffer += chunk;
             const lines = buffer.split(/\r?\n/); buffer = lines.pop();
             for (const line of lines) { try { onLine(line); } catch (e) { failure = e; child.kill(); } }
         });
