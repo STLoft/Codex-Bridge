@@ -29,6 +29,12 @@ class Store {
     saveSettings(value) {
         return this.enqueue(async () => { const next = { ...this.settings, ...value }; await this.atomic(this.settingsFile, next); this.settings = next; });
     }
+    reset() {
+        return this.enqueue(async () => {
+            const next = { since: new Date().toISOString(), requests: 0, knownRequests: 0, tokens: 0, records: [] };
+            await this.atomic(this.file, next); this.state = next;
+        });
+    }
     usage() {
         const now = Date.now();
         const summary = hours => {

@@ -164,3 +164,81 @@ test('serialized persistence survives concurrent records and restarts without st
     await Promise.all(Array.from({ length: 10 }, (_, i) => b.store.add({ id: String(i), at: new Date().toISOString(), model: 'm', state: 'completed', usage: i % 2 ? { total_tokens: 10 } : null })));
     const reopened = await new Store(path.join(b.root, 'data')).init(); assert.equal(reopened.usage().all.requests, 10); assert.equal(reopened.usage().all.tokens, 50); assert.equal(reopened.usage().all.unknown, 5);
 });
+
+test('usage reset serializes with records, persists zero totals and preserves settings', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-reset-test-'));
+    t.after(() => fs.rm(root, { recursive: true, force: true }));
+    const store = await new Store(root).init();
+    await store.saveSettings({ defaultModel: 'keep-model', effort: 'high' });
+    const settingsBefore = await fs.readFile(store.settingsFile, 'utf8');
+    const record = id => ({ id, at: new Date().toISOString(), model: 'm', state: 'completed', usage: { total_tokens: 120 } });
+    await store.add(record('old'));
+    const before = Date.now();
+    await Promise.all([store.add(record('before-reset')), store.reset(), store.add({ ...record('after-reset'), usage: null })]);
+    assert.deepEqual(store.usage().all, { requests: 1, tokens: 0, unknown: 1 });
+    assert.equal(store.usage().records[0].id, 'after-reset');
+    assert.ok(Date.parse(store.state.since) >= before);
+    let reopened = await new Store(root).init();
+    assert.equal(reopened.state.requests, 1);
+    await reopened.reset();
+    reopened = await new Store(root).init();
+    assert.deepEqual(reopened.usage().all, { requests: 0, tokens: 0, unknown: 0 });
+    assert.deepEqual(reopened.usage().fiveHours, { requests: 0, tokens: 0, unknown: 0 });
+    assert.deepEqual(reopened.usage().sevenDays, { requests: 0, tokens: 0, unknown: 0 });
+    assert.equal(reopened.state.knownRequests, 0); assert.deepEqual(reopened.usage().records, []);
+    assert.equal(await fs.readFile(store.settingsFile, 'utf8'), settingsBefore);
+    assert.deepEqual(reopened.settings, { defaultModel: 'keep-model', effort: 'high' });
+});
+
+test('failed usage reset leaves memory and disk intact and the write queue can recover', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-reset-failure-'));
+    t.after(() => fs.rm(root, { recursive: true, force: true }));
+    const store = await new Store(root).init();
+    const record = { id: 'keep', at: new Date().toISOString(), model: 'm', state: 'completed', usage: { total_tokens: 10 } };
+    await store.add(record); const stateBefore = store.state, diskBefore = await fs.readFile(store.file, 'utf8');
+    const atomic = store.atomic; store.atomic = async () => { throw new Error('simulated disk failure'); };
+    await assert.rejects(store.reset(), /disk failure/);
+    assert.equal(store.state, stateBefore); assert.equal(await fs.readFile(store.file, 'utf8'), diskBefore);
+    store.atomic = atomic; await store.add({ ...record, id: 'new' });
+    assert.equal((await new Store(root).init()).usage().all.requests, 2);
+});
+
+test('plugin usage reset enforces admin, returns fresh totals and never queries CLI limits', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-reset-route-'));
+    t.after(() => fs.rm(root, { recursive: true, force: true }));
+    const store = await new Store(root).init();
+    await store.saveSettings({ defaultModel: 'keep-model', effort: 'high' });
+    const settingsBefore = await fs.readFile(store.settingsFile, 'utf8');
+    const vm = require('node:vm'), mod = { exports: {} }, routes = new Map();
+    const actual = require('../server.cjs');
+    class TestBridge {
+        constructor() { this.store = store; }
+        async start() { return this; }
+        async status() { throw new Error('reset must not query the CLI'); }
+        async close() {}
+    }
+    vm.runInNewContext(await fs.readFile(path.join(__dirname, '../index.js'), 'utf8'), {
+        module: mod, require(name) { assert.equal(name, './server.cjs'); return { ...actual, Bridge: TestBridge }; },
+        console: { log() {}, error() {} },
+    });
+    await mod.exports.init({ get(name, fn) { routes.set('GET ' + name, fn); }, post(name, fn) { routes.set('POST ' + name, fn); } });
+    t.after(() => mod.exports.exit());
+    const handler = routes.get('POST /usage/reset'); assert.equal(typeof handler, 'function');
+    const call = async req => { const res = { code: 200, status(code) { this.code = code; return this; }, json(value) { this.value = value; } }; await handler(req, res); return res; };
+    const seed = () => store.add({ id: 'keep', at: new Date().toISOString(), model: 'm', state: 'completed', usage: { total_tokens: 10 } });
+    await seed(); const diskBefore = await fs.readFile(store.file, 'utf8');
+    for (const user of [{ profile: { admin: false } }, {}, { profile: { admin: 'true' } }]) {
+        const res = await call({ user }); assert.equal(res.code, 403);
+        assert.equal(res.value.error, 'SillyTavern admin 계정만 사용 기록을 초기화할 수 있습니다.');
+        assert.equal(await fs.readFile(store.file, 'utf8'), diskBefore);
+    }
+    for (const req of [{ user: { profile: { admin: true } } }, {}]) {
+        await seed(); const res = await call(req); assert.equal(res.code, 200); assert.equal(res.value.ok, true);
+        assert.deepEqual(res.value.all, { requests: 0, tokens: 0, unknown: 0 }); assert.equal(res.value.records.length, 0);
+        assert.equal(await fs.readFile(store.settingsFile, 'utf8'), settingsBefore);
+    }
+    await seed(); const stateBefore = store.state;
+    store.atomic = async () => { throw new Error('simulated disk failure'); };
+    const failure = await call({ user: { profile: { admin: true } } });
+    assert.equal(failure.code, 503); assert.match(failure.value.error, /disk failure/); assert.equal(store.state, stateBefore);
+});

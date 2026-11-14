@@ -16,10 +16,15 @@ module.exports = {
             res.json({ ...await bridge.status(req.query.refresh === '1'), canManage: isAdmin(req) });
         }, false));
         router.get('/usage', guard(async (_req, res) => res.json({ ok: true, ...bridge.store.usage() })));
+        router.post('/usage/reset', guard(async (req, res) => {
+            if (!isAdmin(req)) return res.status(403).json({ ok: false, error: 'SillyTavern admin 계정만 사용 기록을 초기화할 수 있습니다.' });
+            await bridge.store.reset();
+            res.json({ ok: true, ...bridge.store.usage() });
+        }));
         router.get('/models', guard(async (_req, res) => res.json({ ok: true, ...bridge.modelSnapshot() })));
         router.post('/models/refresh', guard(async (_req, res) => res.json({ ok: true, ...await bridge.refreshModels() })));
         router.post('/settings', guard(async (req, res) => {
-            if (!isAdmin(req)) return res.status(403).json({ ok: false, error: '서버 관리자만 연결 설정을 바꿀 수 있습니다.' });
+            if (!isAdmin(req)) return res.status(403).json({ ok: false, error: 'SillyTavern admin 계정만 연결 설정을 바꿀 수 있습니다.' });
             const { defaultModel = '', effort = 'medium' } = req.body || {};
             if (typeof defaultModel !== 'string' || defaultModel.length > 200 || defaultModel.trim().startsWith('-') || !['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(effort)) return res.status(400).json({ ok: false, error: '모델 또는 추론 단계 값이 올바르지 않습니다.' });
             await bridge.store.saveSettings({ defaultModel: defaultModel.trim(), effort }); bridge.statusCache = null; res.json({ ok: true });
