@@ -119,13 +119,12 @@ export ST_CODEX_CHAT_BIN="$HOME/bin/codex"
 
 추론 설정과 팝업 읽는 방법은 [처음 연결 안내](CONNECTION.md)를 참고하세요.
 
-## 잔량·모델 조회가 제한되는 이유
+## 잔량·모델 조회
 
-현재 확장은 Termux에서 대화 생성을 `codex exec`로 처리합니다. 공식 잔량과 모델 목록을 가져오는 조회 기능은 `codex app-server` 연결에만 구현되어 있어, 이 기본 연결에서는 조회를 건너뜁니다.
+- **모델 목록:** Windows에서 `codex debug models`로 조회를 확인했습니다. 이 조회 방식은 현재 확장의 Termux 연결에 아직 적용하지 않았습니다.
+- **계정 잔량:** Windows의 `exec` 실행에서는 얻지 못했습니다. 현재 확장의 Termux 연결에서는 지원하지 않습니다.
 
-**현재 확장의 구현 범위에 따른 제한입니다.** 설치된 Termux용 CLI에서 app-server가 실행되고 조회 요청에 정상 응답한다면 잔량·모델 목록을 가져오는 방식도 검토할 수 있습니다. 실제 Termux에서의 동작은 아직 확인하지 않았습니다.
-
-대화는 exec로 유지하고 조회만 별도 app-server로 처리하는 구조가 후보입니다. 이 분리 조회 기능은 현재 배포본에는 구현되어 있지 않습니다. 공식 조회 항목은 [OpenAI App Server 문서](https://learn.chatgpt.com/docs/app-server)의 `account/rateLimits/read`와 `model/list`입니다.
+현재는 기본 모델(`codex-default`)을 선택하거나 모델 ID를 직접 입력해 사용하세요. Termux 실기기는 아직 검증하지 않았습니다.
 
 ## Termux에서는 무엇이 다른가요?
 
