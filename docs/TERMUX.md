@@ -1,6 +1,6 @@
 # Android Termux 설치 안내
 
-**실제 Android Termux에서는 아직 검증하지 않았습니다.** Windows의 모의 CLI로 exec 전달 경로·표준입력·응답·토큰 처리를 확인했습니다. 실제 Android 바이너리·로그인·네트워크·샌드박스 작동 확인과는 구분합니다.
+**Windows에서 연결 동작 확인 · Termux 실기기 미검증**
 
 ## 어떤 사용 방식인가요?
 

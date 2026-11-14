@@ -68,7 +68,7 @@ git -C public/scripts/extensions/third-party/Codex-Usage pull --ff-only
 
 - 텍스트 대화 전용이며 **Temperature·Top-p는 적용되지 않습니다. 최대 토큰은 길이 안내로만 전달됩니다.**
 - 현재 Termux 연결 방식에서는 공식 잔량·모델 자동 조회를 지원하지 않습니다. [이유와 사용 방법](docs/TERMUX.md#잔량모델-조회가-제한되는-이유)을 확인하세요.
-- Windows Codex CLI 0.169.0으로 확인한 개발 베타입니다. macOS/Linux·Android 실기기는 아직 검증하지 않았습니다.
+- 개발 베타입니다. **Windows에서 연결 동작 확인 · Termux 실기기 미검증**. macOS/Linux 실기기도 아직 검증하지 않았습니다.
 - OpenAI 또는 SillyTavern의 공식 확장은 아닙니다. 로그인 정보는 설치된 CLI가 관리하고, 응답 생성 시 대화는 CLI를 통해 OpenAI로 전송됩니다.
 
 막히는 부분이 있다면 [설치·연결 문제 해결](docs/TROUBLESHOOTING.md)을 확인하세요.
