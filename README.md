@@ -47,6 +47,8 @@ git clone https://github.com/STLoft/Codex-Usage.git public/scripts/extensions/th
 
 자세한 모델·추론 설정은 [첫 연결 안내](docs/CONNECTION.md)를 참고하세요.
 
+Usage **설정 → 연결 프로필별 추론 설정**에서 Codex 프로필을 고르고 추론 단계를 저장할 수 있습니다. 모델·추론이 프로필 전환과 함께 적용되며, 일반 사용자도 자신의 프로필에 저장할 수 있습니다.
+
 ## 사용량·모델
 
 - **계정 잔량** — 5시간·주간 잔량과 리셋 시각을 표시합니다. CLI가 제공하지 않은 항목은 `미제공`, 조회 실패는 `조회 불가`로 표시하며 실제 `0%`과 구분합니다.

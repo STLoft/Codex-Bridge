@@ -25,9 +25,12 @@ function parseChat(body) {
     stops = stops.filter(Boolean);
     const budget = body.max_completion_tokens ?? body.max_tokens;
     if (budget != null && (!Number.isInteger(budget) || budget < 1 || budget > 200000)) bad('최대 토큰 값이 올바르지 않습니다.');
+    if (body.codex_bridge != null && (typeof body.codex_bridge !== 'object' || Array.isArray(body.codex_bridge))) bad('프로필 추론 설정 형식이 올바르지 않습니다.');
+    const effort = body.codex_bridge?.effort ?? body.reasoning_effort;
+    if (effort != null && !['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(effort)) bad('지원하지 않는 추론 단계입니다.');
     const continuation = messages.at(-1).role === 'assistant';
     const instructions = messages.filter(m => ['system', 'developer'].includes(m.role)).map(m => m.content).join('\n\n');
-    return { model: body.model.trim(), stream: body.stream === true, stops, instructions: RP_INSTRUCTIONS + '\n\n' + instructions,
+    return { model: body.model.trim(), effort: effort ?? null, stream: body.stream === true, stops, instructions: RP_INSTRUCTIONS + '\n\n' + instructions,
         input: `Conversation JSON:\n${transcript}\n\n${continuation ? 'Continue the last assistant message. Return only the continuation, without repeating the existing text.' : 'Write the next assistant reply.'}${budget ? ` Aim for no more than approximately ${budget} output tokens.` : ''}` };
 }
 

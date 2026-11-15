@@ -41,7 +41,7 @@ if (args.includes('debug') && args.includes('models')) {
             if (process.env.ST_CODEX_TEST_HANG_QUOTA) return;
             return reply({ rateLimits: { primary: { usedPercent: 25, windowDurationMins: 300, resetsAt: 1800000000 }, secondary: { usedPercent: 12, windowDurationMins: 10080, resetsAt: 1800400000 } } });
         }
-        if (m.method === 'model/list') return reply({ data: [{ model: 'test-model', displayName: 'Test Model', isDefault: true, supportedReasoningEfforts: [{ reasoningEffort: 'medium' }] }], nextCursor: null });
+        if (m.method === 'model/list') return reply({ data: [{ model: 'test-model', displayName: 'Test Model', isDefault: true, supportedReasoningEfforts: ['low', 'medium', 'high'].map(reasoningEffort => ({ reasoningEffort })), defaultReasoningEffort: 'medium' }], nextCursor: null });
         if (m.method === 'thread/start') {
             if (process.env.ST_CODEX_TEST_DEFAULT_MODEL) assert.ok(!Object.hasOwn(m.params, 'model'));
             else assert.equal(m.params.model, 'test-model');
@@ -61,7 +61,7 @@ if (args.includes('debug') && args.includes('models')) {
             notify('item/agentMessage/delta', { itemId: 'comment', delta: 'HIDDEN PROGRESS' });
             notify('item/completed', { item: { type: 'agentMessage', id: 'comment', phase: 'commentary', text: 'HIDDEN PROGRESS' } });
             notify('item/started', { item: { type: 'agentMessage', id: 'a', phase: 'final_answer' } });
-            for (const delta of ['문을 ', '열었다.\nST', 'OP이후']) notify('item/agentMessage/delta', { itemId: 'a', delta });
+            for (const delta of (input.includes('[ECHO_EFFORT]') ? [m.params.effort] : ['문을 ', '열었다.\nST', 'OP이후'])) notify('item/agentMessage/delta', { itemId: 'a', delta });
             notify('item/completed', { item: { type: 'agentMessage', id: 'a', phase: 'final_answer', text: '문을 열었다.\nSTOP이후' } });
             notify('thread/tokenUsage/updated', { tokenUsage: { total: { inputTokens: 100, outputTokens: 20, cachedInputTokens: 40, reasoningOutputTokens: 5 } } });
             notify('turn/completed', { turn: { id: 'turn-test', status: input.includes('[FAIL]') ? 'failed' : 'completed', error: { message: 'mock failure' } } });

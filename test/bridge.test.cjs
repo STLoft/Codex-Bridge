@@ -28,6 +28,26 @@ test('roleplay keeps character, names, order, unicode and assistant continuation
     assert.match(parsed.instructions, /한국어로 고성/); assert.match(parsed.input, /"name":"손님"/); assert.match(parsed.input, /Return only the continuation/);
     assert.ok(parsed.input.indexOf('"name":"손님"') < parsed.input.indexOf('"name":"문지기"'));
 });
+
+test('profile effort travels per request without changing server defaults or crossing concurrent chats', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-profile-effort-'));
+    const calls = [];
+    const engine = { transport: 'app-server', async models() { return [{ id: 'test-model', efforts: ['low', 'medium', 'high'] }]; },
+        async status() { return { available: true, loggedIn: true }; }, async close() {},
+        async generate(chat, opts) { await new Promise(r => setTimeout(r, opts.effort === 'high' ? 20 : 1)); calls.push(opts.effort); opts.onDelta(opts.effort); return { usage: null }; } };
+    const b = await new Bridge({ root, engine, port: 0 }).start();
+    t.after(async () => { await b.close(); await fs.rm(root, { recursive: true, force: true }); });
+    await b.store.saveSettings({ defaultModel: 'keep', effort: 'medium' });
+    const settingsBefore = await fs.readFile(b.store.settingsFile, 'utf8');
+    assert.equal((await b.status()).capabilities.profileReasoning, true);
+    const results = await Promise.all(['high', 'low', null].map(effort => post(b, { ...body(), ...(effort ? { codex_bridge: { effort } } : {}) }).then(r => r.json())));
+    assert.deepEqual(results.map(r => r.choices[0].message.content), ['high', 'low', 'medium']);
+    assert.equal((await (await post(b, { ...body(), reasoning_effort: 'low' })).json()).choices[0].message.content, 'low');
+    for (const extra of [{ codex_bridge: [] }, { codex_bridge: { effort: 'max' } }, { codex_bridge: { effort: 'xhigh' } }]) {
+        assert.equal((await post(b, { ...body(), ...extra })).status, 400);
+    }
+    assert.equal(calls.length, 4); assert.equal(await fs.readFile(b.store.settingsFile, 'utf8'), settingsBefore);
+});
 test('reject unsupported images/tools and malformed request parameters', () => {
     assert.throws(() => parseChat({ ...body(), messages: [{ role: 'user', content: [{ type: 'image_url', image_url: { url: 'x' } }] }] }), /텍스트/);
     assert.throws(() => parseChat({ ...body(), tools: [{}] }), /전용/);

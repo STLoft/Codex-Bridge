@@ -35,7 +35,7 @@ class Bridge {
         let value;
         try { value = { ok: true, ...await this.engine.status() }; }
         catch (e) { value = { ok: true, available: false, loggedIn: false, limits: null, error: errorText(e), transport: this.engine.transport }; }
-        value = { ...value, versionBridge: VERSION, apiUrl: this.apiUrl, settings: this.store.settings, checkedAt: new Date().toISOString() };
+        value = { ...value, capabilities: { profileReasoning: true }, versionBridge: VERSION, apiUrl: this.apiUrl, settings: this.store.settings, checkedAt: new Date().toISOString() };
         this.statusCache = { at: Date.now(), value }; return { ...value, active: this.active };
     }
     async models() { return this.modelCache; }
@@ -72,6 +72,8 @@ class Bridge {
         }
         let body; try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return sendJson(res, 400, { error: { message: 'JSON 형식이 올바르지 않습니다.' } }); }
         const chat = parseChat(body);
+        const supported = this.modelCache.find(m => m.id === chat.model)?.efforts;
+        if (chat.effort && supported?.length && !supported.includes(chat.effort)) return sendJson(res, 400, { error: { message: '선택한 모델이 지원하는 추론 단계를 확인하세요.' } });
         if (this.active >= 3) return sendJson(res, 429, { error: { message: '진행 중인 요청이 많습니다.' } });
         await this.complete(chat, req, res);
     }
@@ -92,7 +94,7 @@ class Bridge {
         const emit = delta => { if (!delta) return; text += delta; if (text.length > 4000000) { controller.abort(); throw new Error('답변이 너무 깁니다.'); }
             if (chat.stream) sse({ ...meta, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { content: delta }, finish_reason: null }] }); };
         try {
-            const result = await this.engine.generate(chat, { signal: controller.signal, effort: this.store.settings.effort, onDelta: delta => emit(filter.push(delta)) });
+            const result = await this.engine.generate(chat, { signal: controller.signal, effort: chat.effort ?? this.store.settings.effort, onDelta: delta => emit(filter.push(delta)) });
             usage = result.usage; emit(filter.end());
             if (controller.signal.aborted) throw new Error('요청이 취소되었습니다.');
             if (!text) throw new Error('Codex CLI가 빈 답변을 반환했습니다.');

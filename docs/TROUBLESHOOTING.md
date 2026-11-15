@@ -91,7 +91,7 @@ git -C public/scripts/extensions/third-party/Codex-Usage pull --ff-only
 
 ## Temperature나 최대 토큰 설정이 예상대로 작동하지 않아요
 
-현재 연결은 Temperature·Top-p를 CLI에 전달하지 않습니다. 최대 토큰은 답변 길이 지시로만 전달하며 강제 상한이 아닙니다. 추론 단계는 팝업 **설정**에서 고른 뒤 **적용**을 누르세요. SillyTavern admin 계정만 서버 공통 추론을 저장할 수 있습니다(사용자 계정 기능을 쓰지 않으면 누구나 가능).
+현재 연결은 Temperature·Top-p를 CLI에 전달하지 않습니다. 최대 토큰은 답변 길이 지시로만 전달하며 강제 상한이 아닙니다. 추론은 팝업 **설정 → 연결 프로필별 추론 설정**에서 프로필을 고르고 **이 프로필에 저장**을 누르세요. 프로필 목록이 비어 있다면 Codex 주소·모델을 SillyTavern 연결 프로필로 먼저 저장하고 Connection Manager를 활성화하세요.
 
 ## 버그를 제보하려면
 
