@@ -2,20 +2,12 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { promisify } = require('node:util');
-const execFile = promisify(require('node:child_process').execFile);
+const { findCodex } = require('./cli-resolver.cjs');
 
 // Like Chatelier, respect PATH order and keep prompts on stdin. Resolve npm's
 // Windows wrapper to its JS entry instead of passing any arguments to cmd.exe.
 async function resolveCli(env = process.env) {
-    let binary = env.ST_CODEX_CHAT_BIN || env.ST_CODEX_BIN;
-    if (!binary) {
-        try {
-            const { stdout } = await execFile(process.platform === 'win32' ? 'where.exe' : 'which', ['codex'], { windowsHide: true, timeout: 10000, env });
-            const files = stdout.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-            binary = process.platform === 'win32' ? files.find(x => /\.(exe|cmd|bat)$/i.test(x)) : files[0];
-        } catch { /* friendly error below */ }
-    }
+    const binary = String(env.ST_CODEX_CHAT_BIN || env.ST_CODEX_BIN || '').trim() || await findCodex({ env });
     if (!binary) throw new Error('Codex CLI를 찾지 못했습니다. 서버 터미널에서 codex --version과 codex login status를 확인하세요.');
     if (/\.(cmd|bat|ps1)$/i.test(binary)) {
         const entry = path.join(path.dirname(binary), 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
